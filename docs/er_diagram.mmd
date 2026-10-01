@@ -1,0 +1,257 @@
+erDiagram
+    addresses {
+        integer id PK
+        integer user_id FK
+        string label
+        string address_line
+        string city
+        string landmark
+        float latitude
+        float longitude
+        boolean is_default
+        datetime created_at
+        datetime updated_at
+    }
+    cart_items {
+        integer id PK
+        integer cart_id FK
+        integer product_id FK
+        integer variant_id FK
+        integer quantity
+        string notes
+        datetime created_at
+        datetime updated_at
+    }
+    carts {
+        integer id PK
+        integer customer_id FK,UK
+        integer restaurant_id FK
+        datetime created_at
+        datetime updated_at
+    }
+    categories {
+        integer id PK
+        integer menu_id FK
+        string name
+        string description
+        integer sort_order
+        datetime created_at
+        datetime updated_at
+    }
+    customer_profiles {
+        integer id PK
+        integer user_id FK,UK
+        datetime date_of_birth
+        string dietary_preferences
+        string preferred_payment_method
+        integer loyalty_points
+        datetime created_at
+        datetime updated_at
+    }
+    deliveries {
+        integer id PK
+        integer order_id FK,UK
+        integer driver_id FK
+        string status
+        string pickup_address
+        string dropoff_address
+        datetime assigned_at
+        datetime picked_up_at
+        datetime delivered_at
+        datetime created_at
+        datetime updated_at
+    }
+    delivery_status_history {
+        integer id PK
+        integer delivery_id FK
+        string from_status
+        string to_status
+        integer changed_by_id FK
+        string note
+        datetime created_at
+    }
+    drivers {
+        integer id PK
+        integer user_id FK,UK
+        string vehicle_type
+        string plate_number
+        string license_number
+        boolean is_available
+        float current_latitude
+        float current_longitude
+        datetime created_at
+        datetime updated_at
+    }
+    menus {
+        integer id PK
+        integer restaurant_id FK
+        string name
+        text description
+        boolean is_active
+        datetime created_at
+        datetime updated_at
+    }
+    order_items {
+        integer id PK
+        integer order_id FK
+        integer product_id FK
+        integer variant_id FK
+        string product_name
+        string variant_name
+        decimal unit_price
+        integer quantity
+        decimal line_total
+        string notes
+    }
+    order_status_history {
+        integer id PK
+        integer order_id FK
+        string from_status
+        string to_status
+        integer changed_by_id FK
+        string note
+        datetime created_at
+    }
+    orders {
+        integer id PK
+        string order_number UK
+        integer customer_id FK
+        integer restaurant_id FK
+        integer branch_id FK
+        string status
+        decimal subtotal
+        decimal delivery_fee
+        decimal total
+        string notes
+        integer delivery_address_id FK
+        string delivery_address_text
+        datetime created_at
+        datetime updated_at
+    }
+    payments {
+        integer id PK
+        integer order_id FK,UK
+        string method
+        string status
+        decimal amount
+        string provider_reference
+        string failure_reason
+        datetime paid_at
+        datetime created_at
+        datetime updated_at
+    }
+    product_variants {
+        integer id PK
+        integer product_id FK
+        string name
+        decimal price_modifier
+        boolean is_available
+        datetime created_at
+        datetime updated_at
+    }
+    products {
+        integer id PK
+        integer category_id FK
+        integer restaurant_id FK
+        string name
+        text description
+        decimal base_price
+        string image_url
+        integer prep_time_minutes
+        boolean is_available
+        datetime created_at
+        datetime updated_at
+    }
+    refunds {
+        integer id PK
+        integer payment_id FK
+        decimal amount
+        string reason
+        string status
+        integer requested_by_id FK
+        integer processed_by_id FK
+        datetime processed_at
+        datetime created_at
+        datetime updated_at
+    }
+    restaurant_branches {
+        integer id PK
+        integer restaurant_id FK
+        string name
+        string address_line
+        string city
+        float latitude
+        float longitude
+        string phone
+        decimal delivery_fee
+        boolean is_active
+        datetime created_at
+        datetime updated_at
+    }
+    restaurant_staff {
+        integer id PK
+        integer user_id FK
+        integer branch_id FK
+        string position
+        boolean is_active
+        datetime created_at
+        datetime updated_at
+    }
+    restaurants {
+        integer id PK
+        integer owner_id FK
+        string name UK
+        text description
+        string cuisine_type
+        string phone
+        string email
+        string logo_url
+        boolean is_active
+        datetime created_at
+        datetime updated_at
+    }
+    users {
+        integer id PK
+        string email UK
+        string hashed_password
+        string full_name
+        string phone
+        string role
+        boolean is_active
+        datetime created_at
+        datetime updated_at
+    }
+    addresses |o--o{ orders : "delivery_address_id"
+    carts ||--o{ cart_items : "cart_id"
+    categories ||--o{ products : "category_id"
+    deliveries ||--o{ delivery_status_history : "delivery_id"
+    drivers |o--o{ deliveries : "driver_id"
+    menus ||--o{ categories : "menu_id"
+    orders ||--o{ order_items : "order_id"
+    orders ||--o{ order_status_history : "order_id"
+    orders ||--o| deliveries : "order_id"
+    orders ||--o| payments : "order_id"
+    payments ||--o{ refunds : "payment_id"
+    product_variants |o--o{ cart_items : "variant_id"
+    product_variants |o--o{ order_items : "variant_id"
+    products |o--o{ order_items : "product_id"
+    products ||--o{ cart_items : "product_id"
+    products ||--o{ product_variants : "product_id"
+    restaurant_branches ||--o{ orders : "branch_id"
+    restaurant_branches ||--o{ restaurant_staff : "branch_id"
+    restaurants |o--o{ carts : "restaurant_id"
+    restaurants ||--o{ menus : "restaurant_id"
+    restaurants ||--o{ orders : "restaurant_id"
+    restaurants ||--o{ products : "restaurant_id"
+    restaurants ||--o{ restaurant_branches : "restaurant_id"
+    users |o--o{ delivery_status_history : "changed_by_id"
+    users |o--o{ order_status_history : "changed_by_id"
+    users |o--o{ refunds : "processed_by_id"
+    users ||--o{ addresses : "user_id"
+    users ||--o{ orders : "customer_id"
+    users ||--o{ refunds : "requested_by_id"
+    users ||--o{ restaurant_staff : "user_id"
+    users ||--o{ restaurants : "owner_id"
+    users ||--o| carts : "customer_id"
+    users ||--o| customer_profiles : "user_id"
+    users ||--o| drivers : "user_id"
