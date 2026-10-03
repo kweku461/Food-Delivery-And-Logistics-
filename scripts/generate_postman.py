@@ -105,7 +105,7 @@ collection = {
             item("Create product", "POST", "/products", "owner_token",
                  {"category_id": "{{category_id}}", "name": "Chicken Jollof", "description": "Spicy chicken jollof", "base_price": "40.00"},
                  save={"product_id": "id"}),
-            item("Create product variant", "POST", "/product-variants", "owner_token",
+            item("Create product variant", "POST", "/variants", "owner_token",
                  {"product_id": "{{product_id}}", "name": "Large", "price_modifier": "10.00"}, save={"variant_id": "id"}),
             item("Advanced product search", "GET", "/products",
                  query={"search": "chicken", "category": "meals", "min_price": 20, "max_price": 100, "available": "true",

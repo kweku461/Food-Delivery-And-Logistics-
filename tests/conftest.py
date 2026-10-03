@@ -120,7 +120,7 @@ def world(client, register, admin):
     prod = client.post("/products", headers=owner.h, json={
         "category_id": cat["id"], "name": "Chicken Jollof", "base_price": "40.00",
         "description": "Spicy chicken"}).json()
-    var = client.post("/product-variants", headers=owner.h, json={
+    var = client.post("/variants", headers=owner.h, json={
         "product_id": prod["id"], "name": "Large", "price_modifier": "10.00"}).json()
     staff = register("STAFF", email="staff@test.com")
     sr = client.post(f"/branches/{b['id']}/staff", headers=owner.h, json={"user_id": staff.id})

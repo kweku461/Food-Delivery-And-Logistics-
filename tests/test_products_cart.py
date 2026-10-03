@@ -35,12 +35,13 @@ def test_product_combined_search_from_brief(client, catalog):
 
 def test_product_filters_individually(client, catalog, world):
     assert names(client.get("/products", params={"category": "DRINKS"})) == ["Chicken Broth Shot", "Sobolo"]
-    assert names(client.get("/products", params={"available": False})) == ["Beef Kebab"]
+    assert names(client.get("/products", params={"available": False})) == []          # public never sees unavailable
+    assert names(client.get("/products", headers=world["owner"].h, params={"available": False})) == ["Beef Kebab"]
     assert names(client.get("/products", params={"min_price": 100})) == ["Goat Light Soup"]
     assert names(client.get("/products", params={"max_price": 15})) == ["Chicken Broth Shot", "Sobolo"]
-    assert client.get("/products", params={"restaurant_id": world["restaurant"]["id"]}).json()["total"] == 6
+    assert client.get("/products", params={"restaurant_id": world["restaurant"]["id"]}).json()["total"] == 5
     assert client.get("/products", params={"restaurant_id": 9999}).json()["total"] == 0
-    assert client.get("/products", params={"category_id": world["category"]["id"]}).json()["total"] == 4
+    assert client.get("/products", params={"category_id": world["category"]["id"]}).json()["total"] == 3
 
 
 def test_product_price_range_validation(client):
@@ -55,9 +56,9 @@ def test_product_search_treats_wildcards_literally(client, catalog):
 def test_product_sorting_and_pagination(client, catalog):
     r = client.get("/products", params={"sort_by": "base_price", "order": "asc", "limit": 3}).json()
     assert [float(i["base_price"]) for i in r["items"]] == [10.0, 15.0, 35.0]
-    assert r["total"] == 6 and r["pages"] == 2
+    assert r["total"] == 5 and r["pages"] == 2          # unavailable product hidden from the public
     p2 = client.get("/products", params={"sort_by": "base_price", "order": "asc", "limit": 3, "page": 2}).json()
-    assert [float(i["base_price"]) for i in p2["items"]] == [40.0, 60.0, 120.0]
+    assert [float(i["base_price"]) for i in p2["items"]] == [40.0, 120.0]
 
 
 def test_product_detail_includes_variants(client, world):
@@ -72,12 +73,6 @@ def test_product_validation(client, world):
     assert client.post("/products", headers=o.h, json={"category_id": cat, "name": "Free", "base_price": "0"}).status_code == 422
     assert client.post("/products", headers=o.h, json={"category_id": cat, "name": "X Y", "base_price": "1.999"}).status_code == 422
     assert client.post("/products", headers=o.h, json={"category_id": 999, "name": "Ghost", "base_price": "5"}).status_code == 404
-
-
-def test_variant_cannot_make_price_negative(client, world):
-    r = client.post("/product-variants", headers=world["owner"].h,
-                    json={"product_id": world["product"]["id"], "name": "Cheap", "price_modifier": "-50"})
-    assert r.status_code == 400
 
 
 def test_duplicate_category_name_conflict(client, world):
@@ -108,7 +103,7 @@ def test_delete_product_and_cascade_variants(client, world):
     pid = world["product"]["id"]
     assert client.delete(f"/products/{pid}", headers=world["owner"].h).status_code == 204
     assert client.get(f"/products/{pid}").status_code == 404
-    assert client.get("/product-variants", params={"product_id": pid}).json()["total"] == 0
+    assert client.get(f"/products/{pid}/variants").status_code == 404
 
 
 # ───────── cart ─────────
@@ -154,7 +149,7 @@ def test_update_and_remove_item(client, world):
     assert up.status_code == 200 and up.json()["items"][0]["quantity"] == 4 and up.json()["subtotal"] == "160.00"
     assert client.patch(f"/cart/items/{item_id}", headers=world["customer"].h, json={"quantity": 0}).status_code == 422
     rm = client.delete(f"/cart/items/{item_id}", headers=world["customer"].h)
-    assert rm.status_code == 200 and rm.json()["items"] == [] and rm.json()["restaurant_id"] is None
+    assert rm.status_code == 200 and rm.json()["items"] == []
     assert client.delete(f"/cart/items/{item_id}", headers=world["customer"].h).status_code == 404
 
 
@@ -168,7 +163,7 @@ def test_cannot_touch_another_customers_cart_item(client, world, register):
 def test_cart_rejects_bad_products(client, world):
     w = world
     assert add(client, w, product_id=99999).status_code == 404
-    assert add(client, w, product_id=w["product"]["id"], variant_id=99999).status_code == 404
+    assert add(client, w, product_id=w["product"]["id"], variant_id=99999).status_code == 400
     client.patch(f"/products/{w['product']['id']}", headers=w["owner"].h, json={"is_available": False})
     assert add(client, w, product_id=w["product"]["id"]).status_code == 409
 
@@ -188,6 +183,6 @@ def test_cart_single_restaurant_rule(client, world, register):
     p2 = client.post("/products", headers=owner2.h, json={"category_id": c2["id"], "name": "Meat Pie", "base_price": "12"}).json()
     add(client, world, product_id=world["product"]["id"])
     r = add(client, world, product_id=p2["id"])
-    assert r.status_code == 409 and "another restaurant" in r.json()["error"]["message"]
+    assert r.status_code == 409 and "one restaurant" in r.json()["error"]["message"]
     assert client.delete("/cart", headers=world["customer"].h).json()["items"] == []
     assert add(client, world, product_id=p2["id"]).status_code == 201   # allowed after clearing

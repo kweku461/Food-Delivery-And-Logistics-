@@ -3,8 +3,8 @@
 Week 3 Zaptek brief (Backend Engineering with FastAPI, Team 2): a multi-entity e-commerce + logistics backend
 inspired by the *kind* of system behind Flava Delivery, designed from business requirements rather than copied.
 
-**20 entities · 76 endpoints · JWT + 5-role RBAC · order & delivery state machines · transactional checkout ·
-146 automated tests**
+**20 entities · 74 endpoints · JWT + 5-role RBAC · order & delivery state machines · transactional checkout ·
+170 automated tests**
 
 ## Quick start
 
@@ -17,11 +17,36 @@ uvicorn app.main:app --reload
 
 * Swagger UI: http://127.0.0.1:8000/docs  (ReDoc: `/redoc`) — log in, click **Authorize**, paste the `access_token`.
 * A seeded admin is created on first start: `admin@foodflow.com` / `Admin12345` (change via `.env`).
-* SQLite by default. For PostgreSQL (e.g. Neon) set `DATABASE_URL=postgresql://user:pass@host/db` in your local `.env` (never commit it); `psycopg2-binary` is in requirements.txt.
+* SQLite by default. To use the team's shared PostgreSQL (Neon) database, create a local `.env` (it is git-ignored,
+  never commit it) with `DATABASE_URL`, `SECRET_KEY`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `FIRST_ADMIN_EMAIL` and
+  `FIRST_ADMIN_PASSWORD`. `psycopg[binary]` and `psycopg2-binary` are in `requirements.txt`.
 * Tests: `pytest` (in-memory SQLite, isolated per test, ~40 s).
 * Postman: import `postman/FoodFlow.postman_collection.json` and run folders 1–9 in order with the Collection Runner.
   Tokens/ids are captured automatically. Regenerate with `python scripts/generate_postman.py`.
 * ER diagram: `docs/er_diagram.png` (source `docs/er_diagram.mmd`, regenerate with `python scripts/generate_er.py`).
+
+## Team and contributions
+
+Team 2, Zaptek "Backend Engineering With FastAPI", Week 3. Work was split into phases; the final code on `main` is the
+integrated version of all parts, and `pytest` runs every module together.
+
+| Phase | Member | Part | Where it lives |
+|---|---|---|---|
+| 1 | Henry (Dela Kwabla Djirackor) | Database models, relationships, ER diagram; integration | `app/models.py`, `docs/er_diagram.*`, `app/main.py` |
+| 1 | Nana Kweku (kweku461) | Pydantic schemas, pagination and sorting | `app/schemas/*`, `app/core/pagination.py`, `app/core/geo.py` |
+| 1 | Mensah Justice | Auth, JWT, password hashing, RBAC | `app/security.py`, `app/deps.py`, `app/routers/auth.py` |
+| 1 | Agyapong Emanuella | Centralized error handling; Swagger, Postman, README | `app/errors.py`, `postman/`, `README.md` |
+| 2 | Bryan Owusu | Restaurants, branches, staff | `app/routers/restaurants.py` |
+| 2 | Sanker Protus | Menus, categories, products, variants, search | `app/routers/catalog.py` |
+| 2 | Joseph Boafo | Cart | `app/cart.py`, `app/routers/cart.py` |
+| 2 | Nana Kweku (kweku461) | Customer profile and addresses | `app/routers/customers.py` |
+| 3 | Donkor Owusu | Checkout transaction, orders, filters | `app/services/order_service.py`, `app/routers/orders.py` |
+| 3 | Agnes | Order state machine, drivers, deliveries | `app/services/workflow.py`, `app/routers/logistics.py` |
+| 3 | Mawutor Etornam Chris | Payments and refunds | `app/routers/payments.py`, `app/services/gateway.py` |
+
+The cart (Joseph Boafo) and the catalog (Sanker Protus) are the members' own implementations, merged from their
+branches. Payments and refunds (Chris Mawutor) are integrated into the checkout and order workflow (gateway charge,
+refund approval by owner/admin, payment listing); his `feature/payments-refunds` branch is recorded in the history.
 
 ## Project layout
 
@@ -41,7 +66,7 @@ app/
     order_service.py checkout transaction (cart -> order)
     access.py        row-level visibility per role
     gateway.py       fake payment provider for demos/tests
-  routers/           auth, customers, restaurants, menu, cart, orders, payments, logistics
+  routers/           auth, customers, restaurants, catalog, cart, orders, payments, logistics
 tests/               pytest + FastAPI TestClient
 docs/                ER diagram        postman/   collection        scripts/   generators
 ```
@@ -184,12 +209,12 @@ All errors share one envelope, produced in `app/errors.py`:
 
 ## Testing
 
-`pytest` runs 146 tests with FastAPI `TestClient` against an isolated in-memory SQLite database per test.
+`pytest` runs 170 tests with FastAPI `TestClient` against an isolated in-memory SQLite database per test.
 Coverage: authentication (hashing, JWT tampering/expiry), role permissions, restaurant creation, product search,
 cart operations, order creation (incl. atomic rollback), state transitions, payment records, driver assignment,
 delivery status, database relationships, invalid requests, and pagination / filtering / sorting.
 
-## Endpoint reference (76)
+## Endpoint reference (74)
 
 **Authentication**
 
@@ -234,40 +259,38 @@ delivery status, database relationships, invalid requests, and pagination / filt
 | PATCH | `/staff/{staff_id}` | Update Staff |
 | DELETE | `/staff/{staff_id}` | Remove Staff |
 
-**Menu & Products**
+**Catalog**
 
 | Method | Path | Summary |
 |---|---|---|
 | POST | `/menus` | Create Menu |
-| GET | `/menus` | List Menus |
-| GET | `/menus/{menu_id}` | Menu with its categories |
+| GET | `/restaurants/{restaurant_id}/menus` | List Menus |
+| GET | `/menus/{menu_id}` | Get Menu |
 | PATCH | `/menus/{menu_id}` | Update Menu |
-| DELETE | `/menus/{menu_id}` | Delete Menu |
+| DELETE | `/menus/{menu_id}` | Deactivate Menu |
 | POST | `/categories` | Create Category |
-| GET | `/categories` | List Categories |
-| GET | `/categories/{category_id}` | Get Category |
+| GET | `/menus/{menu_id}/categories` | List Categories |
 | PATCH | `/categories/{category_id}` | Update Category |
 | DELETE | `/categories/{category_id}` | Delete Category |
 | POST | `/products` | Create Product |
-| GET | `/products` | Advanced product search (text, category, restaurant, price range, availability) |
-| GET | `/products/{product_id}` | Product details with variants |
-| PATCH | `/products/{product_id}` | Update a product (STAFF may only toggle is_available) |
-| DELETE | `/products/{product_id}` | Delete Product |
-| POST | `/product-variants` | Create Variant |
-| GET | `/product-variants` | List Variants |
-| GET | `/product-variants/{variant_id}` | Get Variant |
-| PATCH | `/product-variants/{variant_id}` | Update a variant (STAFF may only toggle is_available) |
-| DELETE | `/product-variants/{variant_id}` | Delete Variant |
+| GET | `/products` | List Products |
+| GET | `/products/{product_id}` | Get Product |
+| PATCH | `/products/{product_id}` | Update Product |
+| DELETE | `/products/{product_id}` | Deactivate Product |
+| POST | `/variants` | Create Variant |
+| GET | `/products/{product_id}/variants` | List Variants |
+| PATCH | `/variants/{variant_id}` | Update Variant |
+| DELETE | `/variants/{variant_id}` | Delete Variant |
 
 **Cart**
 
 | Method | Path | Summary |
 |---|---|---|
-| GET | `/cart` | Current cart |
-| DELETE | `/cart` | Empty the cart |
-| POST | `/cart/items` | Add an item (same product+variant increases quantity) |
-| PATCH | `/cart/items/{item_id}` | Update Item |
-| DELETE | `/cart/items/{item_id}` | Remove an item; returns the updated cart |
+| GET | `/cart` | Get my current cart (an empty one is created on first view) |
+| DELETE | `/cart` | Empty my cart |
+| POST | `/cart/items` | Add an item to my cart (same product + variant are merged) |
+| PATCH | `/cart/items/{item_id}` | Update quantity / notes of one of my cart items |
+| DELETE | `/cart/items/{item_id}` | Remove one item from my cart |
 
 **Orders**
 

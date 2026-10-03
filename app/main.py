@@ -9,7 +9,7 @@ from app.database import Base, SessionLocal, engine
 from app.enums import Role
 from app.errors import register_error_handlers
 from app.models import User
-from app.routers import auth, cart, customers, logistics, menu, orders, payments, restaurants
+from app.routers import auth, cart, catalog, customers, logistics, orders, payments, restaurants
 from app.security import hash_password
 
 DESCRIPTION = """
@@ -43,7 +43,7 @@ async def lifespan(_: FastAPI):
 def create_app() -> FastAPI:
     app = FastAPI(title=settings.app_name, version="1.0.0", description=DESCRIPTION, lifespan=lifespan)
     register_error_handlers(app)
-    for r in (auth.router, customers.router, restaurants.router, menu.router, cart.router,
+    for r in (auth.router, customers.router, restaurants.router, catalog.router, cart.router,
               orders.router, payments.router, logistics.router):
         app.include_router(r)
 

@@ -1063,12 +1063,12 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/product-variants",
+              "raw": "{{base_url}}/variants",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
-                "product-variants"
+                "variants"
               ]
             },
             "body": {
