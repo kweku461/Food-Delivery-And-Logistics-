@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 from app.enums import PaymentMethod, Role
 from app.schemas.common import ORMModel, Timestamped
@@ -93,6 +93,13 @@ class AddressUpdate(BaseModel):
     latitude: float | None = Field(None, ge=-90, le=90)
     longitude: float | None = Field(None, ge=-180, le=180)
     is_default: bool | None = None
+
+    @model_validator(mode="after")
+    def _no_null_required(self):
+        for f in ("label", "address_line", "city", "is_default"):
+            if f in self.model_fields_set and getattr(self, f) is None:
+                raise ValueError(f"{f} cannot be null")
+        return self
 
 
 class AddressRead(Timestamped, AddressCreate):
