@@ -6,6 +6,10 @@ from app.config import settings
 from app.security import create_access_token
 from tests.conftest import H, PW
 
+def H(token):
+    return {"Authorization": f"Bearer {token}"}
+
+PW = "password123"
 
 def test_register_returns_token_and_user(client):
     r = client.post("/auth/register", json={"email": "New@Test.com", "password": PW, "full_name": "New User"})
