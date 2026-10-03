@@ -9,13 +9,26 @@ engine = create_engine(
     connect_args={"check_same_thread": False} if _is_sqlite else {},
 )
 
+def configure_sqlite(dbapi_conn) -> None:
+    """Enforce foreign keys and make sure the maths functions used by the geo filter exist.
+
+    Some SQLite builds ship without SIN/COS/ASIN/...; PostgreSQL always has them.
+    """
+    import math
+
+    cur = dbapi_conn.cursor()
+    cur.execute("PRAGMA foreign_keys=ON")
+    cur.close()
+    for name, fn, n in (("sin", math.sin, 1), ("cos", math.cos, 1), ("asin", math.asin, 1),
+                        ("sqrt", math.sqrt, 1), ("radians", math.radians, 1), ("power", math.pow, 2)):
+        dbapi_conn.create_function(name, n, fn)
+
+
 if _is_sqlite:
 
     @event.listens_for(engine, "connect")
-    def _enable_sqlite_fk(dbapi_conn, _):
-        cur = dbapi_conn.cursor()
-        cur.execute("PRAGMA foreign_keys=ON")
-        cur.close()
+    def _sqlite_connect(dbapi_conn, _):
+        configure_sqlite(dbapi_conn)
 
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)

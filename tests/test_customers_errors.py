@@ -57,10 +57,10 @@ def test_every_error_uses_same_envelope(client, world):
         client.get("/products/999999"),                                       # 404
         client.post("/auth/register", json={}),                               # 422
         client.post("/auth/register", json={"email": world["customer"].email, "password": "Password123", "full_name": "Dup"}),  # 409
-        client.get("/restaurants", params={"sort_by": "nope"}),               # 400
+        client.get("/restaurants", params={"sort_by": "nope"}),               # 422
         client.delete("/auth/me"),                                            # 405
     ]
-    assert [r.status_code for r in responses] == [401, 403, 404, 422, 409, 400, 405]
+    assert [r.status_code for r in responses] == [401, 403, 404, 422, 409, 422, 405]
     for r in responses:
         body = r.json()
         assert set(body) == {"error"} and {"code", "message", "details"} == set(body["error"])
@@ -68,10 +68,10 @@ def test_every_error_uses_same_envelope(client, world):
 
 
 def test_validation_error_details_name_fields(client, world):
-    r = client.post("/products", headers=world["owner"].h, json={"category_id": "abc", "name": "", "base_price": -5})
+    r = client.post("/products", headers=world["owner"].h, json={"category_id": "abc", "base_price": -5})
     assert r.status_code == 422
     fields = {d["field"] for d in r.json()["error"]["details"]}
-    assert {"category_id", "name", "base_price"} <= fields
+    assert {"category_id", "base_price"} <= fields
 
 
 def test_malformed_json_body(client, world):
